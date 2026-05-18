@@ -297,12 +297,14 @@ html, body {
 
 /* ─── PRINT / PDF ─────────────────────────────────────────────────────────── */
 @media print {
+  @page { size: A4; margin: 12mm 14mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  body { background: #fff !important; color: #111 !important; font-family: 'DM Sans', sans-serif; }
+  body { background: #fff !important; color: #111 !important; font-family: 'DM Sans', sans-serif; font-size: 9pt; }
   #app { display: block; }
   .topbar, .tabs, #addSection, .month-nav, .stats-grid, #installBanner,
-  .trip-actions, #toast, .install-close { display: none !important; }
+  .trip-actions, .trip-card, .totals-card, #tripList, #totalsArea,
+  #toast, .install-close, .act-btn { display: none !important; }
 
   #overviewSection { display: block !important; padding: 0 !important; }
   .content { padding: 0 !important; overflow: visible !important; }
@@ -310,36 +312,32 @@ html, body {
   /* Print header */
   #printHeader {
     display: flex !important;
-    justify-content: space-between; align-items: flex-start;
-    padding-bottom: 16px; margin-bottom: 24px;
+    justify-content: space-between; align-items: flex-end;
+    padding-bottom: 8px; margin-bottom: 10px;
     border-bottom: 2px solid #111;
   }
-  #printHeader h2 { font-family: 'DM Serif Display', serif; font-size: 28px; color: #111; }
-  #printHeader .ph-sub { font-size: 13px; color: #666; margin-top: 4px; }
-  #printHeader .ph-right { text-align: right; font-size: 12px; color: #888; }
+  #printHeader h2 { font-family: 'DM Serif Display', serif; font-size: 18pt; color: #111; margin: 0; }
+  #printHeader .ph-sub { font-size: 8pt; color: #666; margin-top: 2px; }
+  #printHeader .ph-right { text-align: right; font-size: 8pt; color: #888; }
 
-  .trip-card {
-    background: #fff !important; border: 1px solid #ddd !important;
-    border-radius: 0 !important; margin-bottom: 0 !important;
-    border-bottom: none !important;
-  }
-  .trip-card:first-child { border-top: 1px solid #ddd !important; border-radius: 4px 4px 0 0 !important; }
-  .trip-card:last-child { border-bottom: 1px solid #ddd !important; border-radius: 0 0 4px 4px !important; }
-  .trip-main { padding: 10px 14px !important; }
-  .trip-footer { padding: 8px 14px !important; background: #fafafa !important; border-top: 1px solid #eee !important; }
-  .trip-date { color: #999 !important; }
-  .trip-addr { color: #111 !important; font-size: 13px !important; }
-  .trip-arrow { color: #999 !important; }
-  .trip-km { color: #666 !important; }
-  .trip-euro { color: #111 !important; font-size: 18px !important; }
-  .trip-note { color: #888 !important; }
+  /* Compact print table */
+  #printTable { display: table !important; width: 100%; border-collapse: collapse; font-size: 8pt; }
+  #printTable thead tr { background: #f0f0f0; }
+  #printTable th { padding: 5px 6px; text-align: left; font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1.5px solid #333; color: #333; }
+  #printTable th.num { text-align: right; }
+  #printTable td { padding: 4px 6px; border-bottom: 0.5px solid #ddd; vertical-align: middle; }
+  #printTable td.num { text-align: right; font-weight: 600; }
+  #printTable td.euro { text-align: right; font-weight: 700; }
+  #printTable td.note { font-size: 7pt; color: #888; }
+  #printTable tr:nth-child(even) td { background: #fafafa; }
 
-  .totals-card { background: #fff !important; border: 1px solid #ddd !important; border-radius: 4px !important; margin-top: 12px !important; }
-  .totals-row { border-bottom: 1px solid #eee !important; }
-  .totals-label { color: #666 !important; }
-  .totals-value { color: #111 !important; }
-  .totals-big .totals-label { color: #888 !important; }
-  .totals-big .totals-euro { color: #111 !important; font-size: 30px !important; }
+  /* Totals summary row */
+  #printTotals { display: table !important; width: 100%; border-collapse: collapse; margin-top: 8px; }
+  #printTotals td { padding: 4px 6px; font-size: 8.5pt; }
+  #printTotals .tot-label { color: #666; }
+  #printTotals .tot-val { font-weight: 700; text-align: right; }
+  #printTotals .tot-big { font-size: 11pt; font-weight: 800; border-top: 1.5px solid #111; padding-top: 6px; }
+  #printTotals .tot-big-label { color: #111; font-size: 10pt; font-weight: 700; border-top: 1.5px solid #111; padding-top: 6px; }
 }
 </style>
 </head>
@@ -445,9 +443,29 @@ html, body {
       <div class="ph-right" id="printDate"></div>
     </div>
 
+    <!-- Print-only compact table -->
+    <table id="printTable" style="display:none;">
+      <thead><tr>
+        <th>Datum</th><th>Van</th><th>Naar</th><th>Opmerking</th><th class="num">Km</th><th class="num">Vergoeding</th>
+      </tr></thead>
+      <tbody id="printTableBody"></tbody>
+    </table>
+    <table id="printTotals" style="display:none;">
+      <tbody id="printTotalsBody"></tbody>
+    </table>
+
     <div class="month-nav">
       <select class="month-sel" id="monthSel" onchange="renderOverview()"></select>
       <button class="pdf-btn" id="pdfBtn" onclick="doPrint()">📄 PDF</button>
+    </div>
+
+    <!-- Export / Import -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button onclick="exportData()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;">⬇ Exporteren</button>
+      <label style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:center;display:block;">
+        ⬆ Importeren
+        <input type="file" accept=".json" onchange="importData(event)" style="display:none;"/>
+      </label>
     </div>
 
     <div id="tripList"></div>
@@ -803,11 +821,76 @@ function renderOverview() {
 
 // ── PDF / Print ───────────────────────────────────────────────────────────
 function doPrint() {
+  const ym = document.getElementById('monthSel').value || curMonth();
+  const [y,m] = ym.split('-');
+  const mt = trips.filter(t=>{ const [ty,tm]=t.date.split('-'); return ty===y&&tm===m; });
+  const totalKm = mt.reduce((s,t)=>s+(t.km||0),0);
+  const totalEuro = totalKm * RATE;
+
+  // Fill compact print table
+  document.getElementById('printTableBody').innerHTML = mt.map(t => `
+    <tr>
+      <td>${fmtDate(t.date)}</td>
+      <td>${t.from}</td>
+      <td>${t.to}</td>
+      <td class="note">${t.note||''}</td>
+      <td class="num">${t.km}</td>
+      <td class="euro">${fmtEuro(t.km*RATE)}</td>
+    </tr>`).join('');
+
+  document.getElementById('printTotalsBody').innerHTML = `
+    <tr><td class="tot-label">Aantal ritten</td><td class="tot-val">${mt.length}</td></tr>
+    <tr><td class="tot-label">Totaal kilometers</td><td class="tot-val">${totalKm.toFixed(1)} km</td></tr>
+    <tr><td class="tot-label">Tarief</td><td class="tot-val">€0,4327/km</td></tr>
+    <tr><td class="tot-big-label">Totale vergoeding</td><td class="tot-val tot-big">${fmtEuro(totalEuro)}</td></tr>`;
+
   document.getElementById('printHeader').style.display = 'flex';
+  document.getElementById('printTable').style.display = 'table';
+  document.getElementById('printTotals').style.display = 'table';
+
   setTimeout(()=>{
     window.print();
-    setTimeout(()=>{ document.getElementById('printHeader').style.display='none'; }, 500);
+    setTimeout(()=>{
+      document.getElementById('printHeader').style.display = 'none';
+      document.getElementById('printTable').style.display = 'none';
+      document.getElementById('printTotals').style.display = 'none';
+    }, 800);
   }, 100);
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────
+function exportData() {
+  const data = { trips, exported: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `km-data-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Data geëxporteerd ✓');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.trips || !Array.isArray(data.trips)) { toast('Ongeldig bestand'); return; }
+      // Merge: add trips not already present (by id)
+      const existingIds = new Set(trips.map(t=>t.id));
+      const newTrips = data.trips.filter(t=>!existingIds.has(t.id));
+      trips = [...trips, ...newTrips].sort((a,b)=>a.date.localeCompare(b.date));
+      saveAll();
+      buildMonthSel();
+      renderOverview();
+      toast(`${newTrips.length} ritten geïmporteerd ✓`);
+    } catch { toast('Fout bij inlezen bestand'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
